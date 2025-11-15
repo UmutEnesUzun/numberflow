@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Numberflow — Strict Port Flow, Gradual Unlocks, Dynamic Shop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background:#111827; color:#fff; overflow:hidden; }
+    canvas { background:#1F2937; cursor:crosshair; display:block; }
+    .build-button { transition: all 0.2s ease; }
+    .build-button:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(59,130,246,0.5); }
+    .build-button.selected { background-color:#2563EB; border-color:#1D4ED8; }
+    .build-button:disabled { opacity:.35; cursor:not-allowed; }
+    #baseInventory { max-height:150px; overflow-y:auto; }
+    #baseInventory::-webkit-scrollbar { width:6px; }
+    #baseInventory::-webkit-scrollbar-track { background:#4B5563; }
+    #baseInventory::-webkit-scrollbar-thumb { background-color:#1D4ED8; border-radius:3px; }
+    .sidebar { display:flex; flex-direction:column; gap:1.25rem; overflow-y:auto; scrollbar-width: thin; scrollbar-color:#4B5563 #374151; }
+    .sidebar::-webkit-scrollbar { width:8px; }
+    .sidebar::-webkit-scrollbar-track { background:#374151; }
+    .sidebar::-webkit-scrollbar-thumb { background-color:#4B5563; border-radius:4px; border:2px solid #374151; }
+    .badge { background:#1F2937; color:#A3E635; font-weight:bold; border:1px solid #374151; padding:2px 6px; border-radius:6px; }
+    .req-pill { background:#111827; border:1px solid #374151; padding:4px 8px; border-radius:8px; font-size:12px; color:#9CA3AF; }
+  </style>
+</head>
+<body class="flex flex-row w-screen h-screen p-4 gap-4">
+
+  <!-- Left Panel -->
+  <div class="w-full md:w-64 lg:w-80 bg-gray-800 p-6 rounded-lg shadow-xl flex-shrink-0 sidebar">
+    <div>
+      <h1 class="text-3xl font-bold text-blue-400">Numberflow</h1>
+      <p class="text-sm text-gray-400">Build. Calculate. Automate.</p>
+    </div>
+
+    <div class="bg-gray-700 rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-gray-300 mb-2">Base inventory</h2>
+      <div id="baseInventory" class="grid grid-cols-3 gap-2 p-2 bg-gray-800 rounded">
+        <span class="text-sm text-gray-500 col-span-3 text-center">No numbers received yet.</span>
+      </div>
+    </div>
+
+    <div class="bg-gray-700 rounded-lg p-4">
+      <div class="flex justify-between items-baseline">
+        <span class="text-lg font-semibold text-gray-300">Level</span>
+        <span id="level" class="text-2xl font-bold">1</span>
+      </div>
+      <div class="mt-3">
+        <span class="text-sm text-blue-300 uppercase tracking-wider block text-center">Goals</span>
+        <div id="goals" class="flex flex-wrap gap-2 justify-center mt-2"></div>
+      </div>
+      <div class="w-full bg-gray-600 rounded-full h-2.5 mt-3">
+        <div id="level-progress" class="bg-blue-500 h-2.5 rounded-full" style="width:0%"></div>
+      </div>
+      <p id="level-message" class="text-center text-green-400 font-medium h-6 mt-2"></p>
+    </div>
+
+    <div>
+      <h2 class="text-xl font-semibold mb-3 text-gray-300">Build menu</h2>
+      <div id="buildMenu" class="grid grid-cols-2 gap-3">
+        <button id="tool-conveyor" class="build-button selected bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
+          <div class="text-3xl">〰️</div><div class="font-semibold">Conveyor</div>
+        </button>
+
+        <!-- Operators -->
+        <button data-type="operator" data-op="+" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
+          <div class="text-3xl font-bold">+</div><div class="font-semibold">Add (2x1)</div>
+        </button>
+        <button data-type="operator" data-op="-" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
+          <div class="text-3xl font-bold">−</div><div class="font-semibold">Subtract (2x1)</div>
+        </button>
+        <button data-type="operator" data-op="*" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="3">
+          <div class="text-3xl font-bold">×</div><div class="font-semibold">Multiply (2x2)</div>
+        </button>
+        <button data-type="operator" data-op="/" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="3">
+          <div class="text-3xl font-bold">÷</div><div class="font-semibold">Divide (2x2)</div>
+        </button>
+        <button data-type="operator" data-op="^" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="5">
+          <div class="text-3xl font-bold">x²</div><div class="font-semibold">Square (L)</div>
+        </button>
+        <button data-type="operator" data-op="SQRT" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="6">
+          <div class="text-3xl font-bold">√x</div><div class="font-semibold">Root (1x2)</div>
+        </button>
+        <button data-type="operator" data-op="MOD" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="7">
+          <div class="text-3xl font-bold">%</div><div class="font-semibold">Modulo (T)</div>
+        </button>
+        <button data-type="operator" data-op="LOG" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="10">
+          <div class="text-3xl font-bold">log</div><div class="font-semibold">Log base (custom)</div>
+        </button>
+
+        <!-- Utility buildings -->
+        <button data-type="building" data-op="BRIDGE" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="2">
+          <div class="text-3xl font-bold">⤳</div><div class="font-semibold">Bridge (3x1)</div>
+        </button>
+        <button data-type="building" data-op="SPLIT" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="4">
+          <div class="text-3xl font-bold">⇄</div><div class="font-semibold">Splitter</div>
+        </button>
+        <button data-type="building" data-op="MERGE" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="4">
+          <div class="text-3xl font-bold">⇉</div><div class="font-semibold">Merger</div>
+        </button>
+
+        <!-- New buildings -->
+        <button data-type="building" data-op="HALF" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="4">
+          <div class="text-3xl font-bold">½</div><div class="font-semibold">Halfer</div>
+        </button>
+        <button data-type="operator" data-op="POW" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="5">
+          <div class="text-3xl font-bold">x^y</div><div class="font-semibold">Power (unique)</div>
+        </button>
+        <button data-type="operator" data-op="FACT" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="6">
+          <div class="text-3xl font-bold">x!</div><div class="font-semibold">Factorial (2x3)</div>
+        </button>
+
+        <button id="tool-deconstruct" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
+          <div class="text-3xl">🗑️</div><div class="font-semibold">Deconstruct</div>
+        </button>
+      </div>
+      <p class="text-sm text-gray-400 mt-2">Hold & drag to draw conveyors. Release to finalize.</p>
+    </div>
+
+    <div>
+      <h2 class="text-2xl font-bold text-center text-blue-400 mt-6 mb-2">Upgrades shop</h2>
+      <p class="text-center text-gray-400 mb-2">Reroll manually. Rerolls increase each level.</p>
+      <div class="flex items-center justify-between mb-3">
+        <button id="reroll-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">Reroll</button>
+        <div class="text-sm text-gray-300">Rerolls: <span id="reroll-count" class="font-bold">0</span></div>
+      </div>
+      <div id="shop-items" class="grid grid-cols-1 gap-4">
+        <p class="text-sm text-gray-500 text-center">Click reroll to see upgrades.</p>
+      </div>
+    </div>
+
+    <div class="text-xs text-gray-500 mt-auto pt-6">
+      <h3 class="font-semibold text-gray-400 mb-2">How to play</h3>
+      <ul class="list-disc list-inside space-y-1">
+        <li><b>Pan:</b> Middle-click + drag</li>
+        <li><b>Zoom:</b> Mouse wheel</li>
+        <li><b>Conveyor:</b> Hold left mouse on an output, drag, release on an input</li>
+        <li><b>Bridge:</b> Press B while dragging to switch layer</li>
+        <li><b>Place building:</b> Select item, click grid (preview shows footprint and ports)</li>
+        <li><b>Rotate building:</b> Press R</li>
+        <li><b>Deconstruct:</b> Trash tool; cannot delete base or resources</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Canvas -->
+  <div class="flex-grow bg-gray-900 rounded-lg shadow-xl p-2">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const parentDiv = canvas.parentElement;
+
+      // Grid / world
+      const GRID = 50;
+      const WORLD_W = 4000, WORLD_H = 4000;
+      const TX = Math.floor(WORLD_W / GRID), TY = Math.floor(WORLD_H / GRID);
+      const LAYERS = 2; // 0 ground, 1 bridge
+
+      // Camera
+      const camera = { x:0, y:0, zoom:1, isPanning:false, lastPan:{x:0,y:0} };
+      function screenToWorld(sx, sy){ return { x:(sx - camera.x)/camera.zoom, y:(sy - camera.y)/camera.zoom }; }
+      function snap(v){ return Math.floor(v / GRID) * GRID; }
+      function posToTile(wx, wy){ return { tx: Math.floor(wx / GRID), ty: Math.floor(wy / GRID) }; }
+      function tileToWorld(tx,ty){ return { x: tx*GRID, y: ty*GRID }; }
+      function inside(tx,ty){ return tx>=0 && ty>=0 && tx<TX && ty<TY; }
+
+      // UI elems
+      const levelEl = document.getElementById('level');
+      const goalsEl = document.getElementById('goals');
+      const progressEl = document.getElementById('level-progress');
+      const messageEl = document.getElementById('level-message');
+      const invEl = document.getElementById('baseInventory');
+      const shopEl = document.getElementById('shop-items');
+      const rerollBtn = document.getElementById('reroll-btn');
+      const rerollCountEl = document.getElementById('reroll-count');
+      const buildMenu = document.getElementById('buildMenu');
+
+      // State
+      let buildings = []; // base, spawner, building
+      let conveyors = []; // {id, tiles:[{tx,ty,layer}]}
+      let packets = [];   // {value, convId, tileIndex, offset, layer, stalled}
+      let baseInventory = {};
+      let currentLevel = 0;
+      let currentLevelGoals = []; // [{num, amount, delivered}]
+      let totalNeeded = 0;
+      let totalDelivered = 0;
+      let gameState = 'playing';
+      let buildIdCounter = 1;
+      let rerollCount = 0;
+
+      // Strict per-port capacity (1)
+      const portOccupied = new Set(); // "tx,ty"
+
+      // Grid occupancy
+      const gridB = Array.from({length:TY},()=>Array.from({length:TX},()=>null));
+      const gridC = Array.from({length:LAYERS},()=>Array.from({length:TY},()=>Array.from({length:TX},()=>null)));
+
+      // Tools
+      let tool = { type:'conveyor' };
+      let rotation = 0;
+      let drawLayer = 0;
+      let previewTile = null;
+
+      // Drag conveyor
+      let isDraggingConveyor = false;
+      let dragPath = [];
+
+      // Stats
+      const stats = {
+        packetSpeed: 100,
+        spawnRate: 2.0, // per-output seconds
+        opTime: {
+          '+':1.0, '-':1.0, '*':1.5, '/':1.5, '^':2.0, 'SQRT':2.5, 'MOD':2.0, 'LOG':2.0,
+          'SPLIT':0.15, 'MERGE':0.3, 'BRIDGE':0.0, 'HALF':0.25, 'POW':2.5, 'FACT':2.0
+        }
+      };
+
+      // Level goals scaling: multiple numbers and higher amounts
+      function genLevelGoals(li){
+        const numTargets = Math.min(1 + Math.floor(li/2), 4); // gradually add more types
+        const goals = [];
+        for(let i=0;i<numTargets;i++){
+          const base = 10 + li*8 + Math.floor(Math.random()*15);
+          const num = Math.round(base/2); // keep numbers reasonable
+          const amount = 5 + li*3 + Math.floor(Math.random()*6); // scale amount
+          goals.push({ num, amount, delivered: 0 });
+        }
+        return goals;
+      }
+
+      function renderGoals(){
+        goalsEl.innerHTML = '';
+        for(const g of currentLevelGoals){
+          const pct = Math.min(100, Math.floor((g.delivered / g.amount) * 100));
+          const pill = document.createElement('div');
+          pill.className = 'req-pill';
+          pill.textContent = `[${g.num}] ${g.delivered}/${g.amount}`;
+          goalsEl.appendChild(pill);
+        }
+        const pctTotal = totalNeeded>0 ? Math.floor((totalDelivered/totalNeeded)*100) : 0;
+        progressEl.style.width = `${pctTotal}%`;
+      }
+
+      // Helpers
+      function canPlaceMask(tx,ty,mask, type='operator'){
+        for(const [dx,dy] of mask){
+          const x=tx+dx, y=ty+dy;
+          if(!inside(x,y)) return false;
+          if(gridB[y][x]!==null) return false;
+          if(type!=='bridge'){
+            if(gridC[0][y][x]!==null || gridC[1][y][x]!==null) return false;
+          }
+        }
+        return true;
+      }
+      function occupyMask(id, tx,ty,mask){
+        for(const [dx,dy] of mask){
+          const x=tx+dx, y=ty+dy;
+          gridB[y][x]=id;
+        }
+      }
+      function clearMask(tx,ty,mask){
+        for(const [dx,dy] of mask){
+          const x=tx+dx, y=ty+dy;
+          if(gridB[y]) gridB[y][x]=null;
+        }
+      }
+
+      // Base/spawner ports
+      function computeBasePorts(b){
+        const inputs = [];
+        const x0 = b.tx, y0 = b.ty, w = 3, h = 3;
+        for (let x = x0; x < x0 + w; x++) inputs.push({ tx: x, ty: y0 - 1 });
+        for (let x = x0; x < x0 + w; x++) inputs.push({ tx: x, ty: y0 + h });
+        for (let y = y0; y < y0 + h; y++) inputs.push({ tx: x0 - 1, ty: y });
+        for (let y = y0; y < y0 + h; y++) inputs.push({ tx: x0 + w, ty: y });
+        inputs.push({ tx: x0 - 1, ty: y0 - 1 });
+        inputs.push({ tx: x0 + w, ty: y0 - 1 });
+        inputs.push({ tx: x0 - 1, ty: y0 + h });
+        inputs.push({ tx: x0 + w, ty: y0 + h });
+        const seen = new Set(), out = [];
+        for(const p of inputs){
+          const k=`${p.tx},${p.ty}`; if(p.tx<0||p.ty<0||p.tx>=TX||p.ty>=TY) continue;
+          if(!seen.has(k)){ seen.add(k); out.push(p); }
+        }
+        b.ports = { inputs: out, outputs: [] };
+      }
+      function computeSpawnerPorts(sp){
+        const outputs = [];
+        const x0 = sp.tx, y0 = sp.ty, w = 2, h = 2;
+        for (let x = x0; x < x0 + w; x++) outputs.push({ tx: x, ty: y0 - 1 });
+        for (let x = x0; x < x0 + w; x++) outputs.push({ tx: x, ty: y0 + h });
+        for (let y = y0; y < y0 + h; y++) outputs.push({ tx: x0 - 1, ty: y });
+        for (let y = y0; y < y0 + h; y++) outputs.push({ tx: x0 + w, ty: y });
+        outputs.push({ tx: x0 - 1, ty: y0 - 1 });
+        outputs.push({ tx: x0 + w, ty: y0 - 1 });
+        outputs.push({ tx: x0 - 1, ty: y0 + h });
+        outputs.push({ tx: x0 + w, ty: y0 + h });
+        const seen = new Set(), out = [];
+        for(const p of outputs){
+          const k=`${p.tx},${p.ty}`; if(p.tx<0||p.ty<0||p.tx>=TX||p.ty>=TY) continue;
+          if(!seen.has(k)){ seen.add(k); out.push(p); }
+        }
+        sp.ports = { inputs: [], outputs: out };
+        sp.outputTimers = out.map(()=> stats.spawnRate * Math.random());
+        sp.value = sp.value || Math.ceil(Math.random()*9);
+      }
+
+      // Masks
+      const masks = {
+        '+': [[0,0],[1,0]],
+        '-': [[0,0],[1,0]],
+        '*': [[0,0],[1,0],[0,1],[1,1]],
+        '/': [[0,0],[1,0],[0,1],[1,1]],
+        '^': [[0,0],[1,0],[0,1]],        // L
+        'SQRT': [[0,0],[0,1]],           // 1x2
+        'MOD': [[0,0],[1,0],[1,1]],      // T-like
+        'LOG': [[0,0],[1,0],[1,1],[2,1]],// custom shape to support bottom/top inputs
+        'SPLIT': [[0,0],[1,0]],          // 2x1
+        'MERGE': [[0,0],[1,0],[2,0]],    // 3x1
+        'BRIDGE': [[0,0],[1,0],[2,0]],   // 3x1
+        'HALF': [[0,0],[1,0]],           // 2x1
+        'POW': [[0,0],[1,0],[0,1]],      // L-shaped, x bottom-left, y upper-right
+        'FACT': [[0,0],[1,0],[0,1],[1,1],[0,2],[1,2]] // 2x3
+      };
+      function rotateOffset([dx,dy], rot){
+        if(rot===1) return [dy, -dx];
+        if(rot===2) return [-dx, -dy];
+        if(rot===3) return [-dy, dx];
+        return [dx,dy];
+      }
+      function rotateMask(mask, rot){
+        return mask.map(off=>rotateOffset(off, rot));
+      }
+
+      // Ports
+      function computeOperatorPorts(op){
+        return (tx,ty,rot,mask) => {
+          const tiles = mask.map(([dx,dy]) => ({tx:tx+dx, ty:ty+dy}));
+          const inputs=[], outputs=[];
+          let frontEdge=[], backEdge=[];
+          const xs = tiles.map(t=>t.tx), ys = tiles.map(t=>t.ty);
+          const minX = Math.min(...xs), maxX = Math.max(...xs);
+          const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+          if(rot===0){
+            frontEdge = tiles.filter(t=>t.ty===minY).map(t=>({tx:t.tx,ty:t.ty-1}));
+            backEdge  = tiles.filter(t=>t.ty===maxY).map(t=>({tx:t.tx,ty:t.ty+1}));
+          } else if(rot===2){
+            frontEdge = tiles.filter(t=>t.ty===maxY).map(t=>({tx:t.tx,ty:t.ty+1}));
+            backEdge  = tiles.filter(t=>t.ty===minY).map(t=>({tx:t.tx,ty:t.ty-1}));
+          } else if(rot===1){
+            frontEdge = tiles.filter(t=>t.tx===maxX).map(t=>({tx:t.tx+1,ty:t.ty}));
+            backEdge  = tiles.filter(t=>t.tx===minX).map(t=>({tx:t.tx-1,ty:t.ty}));
+          } else {
+            frontEdge = tiles.filter(t=>t.tx===minX).map(t=>({tx:t.tx-1,ty:t.ty}));
+            backEdge  = tiles.filter(t=>t.tx===maxX).map(t=>({tx:t.tx+1,ty:t.ty}));
+          }
+
+          // Special ports for custom operators/buildings
+          if(op==='LOG'){
+            // two inputs: bottom and top; output at right end
+            const bottom = { tx: Math.floor((minX+maxX)/2), ty: maxY+1 };
+            const top    = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+            inputs.push(bottom, top);
+            outputs.push({ tx: maxX+1, ty: Math.floor((minY+maxY)/2) });
+            return { inputs, outputs };
+          }
+          if(op==='POW'){
+            // x at lower side, y at upper side, output at back center
+            const xIn = { tx: Math.floor((minX+maxX)/2), ty: maxY+1 };
+            const yIn = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+            inputs.push(xIn, yIn);
+            const o = backEdge[Math.floor(backEdge.length/2)] || backEdge[0];
+            if(o) outputs.push(o);
+            return { inputs, outputs };
+          }
+          if(op==='FACT'){
+            // one input front center, output back center
+            const inPt = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+            inputs.push(inPt);
+            const o = backEdge[Math.floor(backEdge.length/2)] || backEdge[0];
+            if(o) outputs.push(o);
+            return { inputs, outputs };
+          }
+
+          const unary = ['^','SQRT'].includes(op);
+          if(unary){
+            let elbow = tiles[0], best= -1;
+            for(const t of tiles){
+              const count = tiles.filter(u=>Math.abs(u.tx-t.tx)+Math.abs(u.ty-t.ty)===1).length;
+              if(count>best){ best=count; elbow=t; }
+            }
+            const inPt = { tx: elbow.tx + (rot===1?1:rot===3?-1:0), ty: elbow.ty + (rot===0?-1:rot===2?1:0) };
+            inputs.push(inPt);
+            const o = backEdge[Math.floor(backEdge.length/2)] || backEdge[0];
+            if(o) outputs.push(o);
+          } else {
+            const fSorted = frontEdge.slice().sort((a,b)=> rot%2===0 ? a.tx-b.tx : a.ty-b.ty);
+            inputs.push(...fSorted.slice(0, Math.min(2, fSorted.length)));
+            const o = backEdge[Math.floor(backEdge.length/2)] || backEdge[0];
+            if(o) outputs.push(o);
+          }
+          return { inputs, outputs };
+        };
+      }
+
+      function computeSplitPorts(tx,ty,rot,mask){
+        const tiles = mask.map(([dx,dy]) => ({tx:tx+dx, ty:ty+dy}));
+        const xs = tiles.map(t=>t.tx), ys = tiles.map(t=>t.ty);
+        const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+        let input=null, outputs=[];
+        if(rot===0){
+          input = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+          outputs = tiles.filter(t=>t.ty===maxY).map(t=>({tx:t.tx,ty:t.ty+1}));
+        } else if(rot===2){
+          input = { tx: Math.floor((minX+maxX)/2), ty: maxY+1 };
+          outputs = tiles.filter(t=>t.ty===minY).map(t=>({tx:t.tx,ty:t.ty-1}));
+        } else if(rot===1){
+          input = { tx: maxX+1, ty: Math.floor((minY+maxY)/2) };
+          outputs = tiles.filter(t=>t.tx===minX).map(t=>({tx:t.tx-1,ty:t.ty}));
+        } else {
+          input = { tx: minX-1, ty: Math.floor((minY+maxY)/2) };
+          outputs = tiles.filter(t=>t.tx===maxX).map(t=>({tx:t.tx+1,ty:t.ty}));
+        }
+        return { inputs:[input], outputs };
+      }
+
+      function computeMergePorts(tx,ty,rot,mask){
+        const tiles = mask.map(([dx,dy]) => ({tx:tx+dx, ty:ty+dy}));
+        const xs = tiles.map(t=>t.tx), ys = tiles.map(t=>t.ty);
+        const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+        let inputs=[], output=null;
+        if(rot===0){
+          inputs = [{tx:minX,ty:minY-1},{tx:maxX,ty:minY-1}];
+          output = { tx: Math.floor((minX+maxX)/2), ty: maxY+1 };
+        } else if(rot===2){
+          inputs = [{tx:minX,ty:maxY+1},{tx:maxX,ty:maxY+1}];
+          output = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+        } else if(rot===1){
+          inputs = [{tx:maxX+1,ty:minY},{tx:maxX+1,ty:maxY}];
+          output = { tx: minX-1, ty: Math.floor((minY+maxY)/2) };
+        } else {
+          inputs = [{tx:minX-1,ty:minY},{tx:minX-1,ty:maxY}];
+          output = { tx: maxX+1, ty: Math.floor((minY+maxY)/2) };
+        }
+        return { inputs, outputs:[output] };
+      }
+
+      function computeBridgePorts(tx,ty,rot,mask){
+        const tiles = mask.map(([dx,dy]) => ({tx:tx+dx, ty:ty+dy}));
+        const xs = tiles.map(t=>t.tx), ys = tiles.map(t=>t.ty);
+        const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+        if(rot===0) return { inputs:[{tx:minX,ty:minY-1}], outputs:[{tx:maxX,ty:maxY+1}] };
+        if(rot===2) return { inputs:[{tx:maxX,ty:maxY+1}], outputs:[{tx:minX,ty:minY-1}] };
+        if(rot===1) return { inputs:[{tx:maxX+1,ty:maxY}], outputs:[{tx:minX-1,ty:minY}] };
+        return { inputs:[{tx:minX-1,ty:minY}], outputs:[{tx:maxX+1,ty:maxY}] };
+      }
+
+      function computeHalferPorts(tx,ty,rot,mask){
+        // One input front center; two outputs back edge tiles
+        const tiles = mask.map(([dx,dy]) => ({tx:tx+dx, ty:ty+dy}));
+        const xs = tiles.map(t=>t.tx), ys = tiles.map(t=>t.ty);
+        const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+        let input, outputs=[];
+        if(rot===0){
+          input = { tx: Math.floor((minX+maxX)/2), ty: minY-1 };
+          outputs = tiles.filter(t=>t.ty===maxY).map(t=>({tx:t.tx,ty:t.ty+1}));
+        } else if(rot===2){
+          input = { tx: Math.floor((minX+maxX)/2), ty: maxY+1 };
+          outputs = tiles.filter(t=>t.ty===minY).map(t=>({tx:t.tx,ty:t.ty-1}));
+        } else if(rot===1){
+          input = { tx: maxX+1, ty: Math.floor((minY+maxY)/2) };
+          outputs = tiles.filter(t=>t.tx===minX).map(t=>({tx:t.tx-1,ty:t.ty}));
+        } else {
+          input = { tx: minX-1, ty: Math.floor((minY+maxY)/2) };
+          outputs = tiles.filter(t=>t.tx===maxX).map(t=>({tx:t.tx+1,ty:t.ty}));
+        }
+        return { inputs:[input], outputs };
+      }
+
+      const opPortFns = {
+        '+': computeOperatorPorts('+'),
+        '-': computeOperatorPorts('-'),
+        '*': computeOperatorPorts('*'),
+        '/': computeOperatorPorts('/'),
+        '^': computeOperatorPorts('^'),
+        'SQRT': computeOperatorPorts('SQRT'),
+        'MOD': computeOperatorPorts('MOD'),
+        'LOG': computeOperatorPorts('LOG'),
+        'POW': computeOperatorPorts('POW'),
+        'FACT': computeOperatorPorts('FACT'),
+        'SPLIT': computeSplitPorts,
+        'MERGE': computeMergePorts,
+        'BRIDGE': computeBridgePorts,
+        'HALF': computeHalferPorts
+      };
+
+      // Inventory UI (dynamic shop buttons update)
+      function updateInv(){
+        if(Object.keys(baseInventory).length===0 || Object.values(baseInventory).every(v=>v===0)){
+          invEl.innerHTML = '<span class="text-sm text-gray-500 col-span-3 text-center">No numbers received yet.</span>';
+        } else {
+          invEl.innerHTML='';
+          const keys = Object.keys(baseInventory).map(Number).sort((a,b)=>a-b);
+          for(const k of keys){
+            const v=baseInventory[k]; if(v>0){
+              invEl.innerHTML += `
+                <div class="bg-gray-700 p-1 rounded text-center">
+                  <span class="font-bold text-blue-300">${k}</span>: <span class="text-white">${v}</span>
+                </div>`;
+            }
+          }
+        }
+        // dynamically reflect shop button enabled state whenever inventory changes
+        updateShopButtons();
+      }
+
+      // Shop (manual reroll)
+      const upgrades = [
+        { id:'packetSpeed', name:'Faster Conveyors', baseCost:10, value:20 },
+        { id:'spawnRate', name:'Faster Spawners', baseCost:10, value:-0.25 },
+        { id:'op+', name:'Faster Add', baseCost:15, op:'+' , value:-0.1 },
+        { id:'op-', name:'Faster Subtract', baseCost:15, op:'-' , value:-0.1 },
+        { id:'op*', name:'Faster Multiply', baseCost:20, op:'*' , value:-0.1 },
+        { id:'op/', name:'Faster Divide', baseCost:20, op:'/' , value:-0.1 },
+        { id:'op^', name:'Faster Square', baseCost:25, op:'^' , value:-0.1 },
+        { id:'opSQRT', name:'Faster Root', baseCost:30, op:'SQRT', value:-0.1 },
+        { id:'opMOD', name:'Faster Modulo', baseCost:25, op:'MOD', value:-0.1 },
+        { id:'opLOG', name:'Faster Log', baseCost:35, op:'LOG', value:-0.1 },
+      ];
+      let shopItems=[];
+      function rerollShop(){
+        shopEl.innerHTML='';
+        shopItems = [...upgrades].sort(()=>0.5 - Math.random()).slice(0,3).map(opt=>{
+          const costNum = Math.floor(Math.random()*9)+1;
+          const costAmt = Math.floor(opt.baseCost*(1+currentLevel*0.5));
+          return { ...opt, costNum, costAmt };
+        });
+        for(const it of shopItems){
+          const desc = it.id==='packetSpeed' ? `+${it.value} speed` : `${Math.round(it.value*100)}% time`;
+          const el = document.createElement('div');
+          el.className = 'bg-gray-700 p-4 rounded-lg text-center flex flex-col gap-2';
+          el.innerHTML = `
+            <div class="text-xl font-semibold">${it.name}</div>
+            <div><span class="badge">Cost: ${it.costAmt} x [${it.costNum}]</span></div>
+            <div class="text-gray-400">${desc}</div>
+            <button data-id="${it.id}" class="buy-button w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Buy</button>`;
+          shopEl.appendChild(el);
+        }
+        updateShopButtons();
+      }
+      function updateShopButtons(){
+        shopEl.querySelectorAll('.buy-button').forEach(btn=>{
+          const id = btn.dataset.id;
+          const it = shopItems.find(i=>i.id===id);
+          if(!it) return;
+          const numKey = Number(it.costNum);
+          const invAmt = Number(baseInventory[numKey] || 0);
+          const enough = invAmt >= Number(it.costAmt);
+          btn.disabled = !enough;
+          btn.textContent = enough ? 'Buy' : 'Not Enough';
+        });
+      }
+      function updateRerollUI(){
+        rerollCountEl.textContent = rerollCount;
+        rerollBtn.disabled = rerollCount<=0;
+      }
+      rerollBtn.addEventListener('click', ()=>{
+        if(rerollCount<=0) return;
+        rerollCount--; updateRerollUI();
+        rerollShop();
+      });
+      shopEl.addEventListener('click',(e)=>{
+        if(!e.target.classList.contains('buy-button')) return;
+        const id = e.target.dataset.id;
+        const it = shopItems.find(i=>i.id===id);
+        if(!it) return;
+        const numKey = Number(it.costNum);
+        const costAmt = Number(it.costAmt);
+        if((baseInventory[numKey]||0) < costAmt){ updateShopButtons(); return; }
+        baseInventory[numKey] = (baseInventory[numKey]||0) - costAmt;
+        if(it.id==='packetSpeed'){ stats.packetSpeed += it.value; }
+        else if(it.id==='spawnRate'){ stats.spawnRate = Math.max(0.25, stats.spawnRate*(1+it.value)); }
+        else if(it.op){ stats.opTime[it.op] = Math.max(0.05, stats.opTime[it.op]*(1+it.value)); }
+        updateInv(); // triggers dynamic shop button update too
+        e.target.disabled = true; e.target.textContent = 'Purchased!';
+        e.target.classList.remove('bg-green-600','hover:bg-green-700'); e.target.classList.add('bg-gray-500');
+      });
+
+      // World init
+      function initWorld(){
+        currentLevelGoals = genLevelGoals(currentLevel);
+        totalNeeded = currentLevelGoals.reduce((s,g)=>s+g.amount,0);
+        totalDelivered = 0;
+        levelEl.textContent = currentLevel+1;
+        renderGoals();
+        messageEl.textContent = '';
+        rerollCount = currentLevel;
+        updateRerollUI();
+
+        // Base 3x3 centered
+        const size = 3;
+        const tx = Math.floor(TX/2)-Math.floor(size/2);
+        const ty = Math.floor(TY/2)-Math.floor(size/2);
+        const baseId = buildIdCounter++;
+        for(let y=0;y<size;y++) for(let x=0;x<size;x++){ gridB[ty+y][tx+x] = baseId; }
+        const baseWorld = tileToWorld(tx,ty);
+        const base = { id:baseId, type:'base', tx, ty, size, x:baseWorld.x, y:baseWorld.y, w:size*GRID, h:size*GRID };
+        computeBasePorts(base);
+        buildings.push(base);
+
+        // Spawners
+        const n = 10 + currentLevel*2;
+        for(let i=0;i<n;i++){
+          let txs, tys, ok=false;
+          const sw=2, sh=2;
+          for(let tries=0;tries<100 && !ok;tries++){
+            txs = Math.floor(Math.random()*(TX-sw));
+            tys = Math.floor(Math.random()*(TY-sh));
+            ok = true;
+            for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){
+              if(gridB[tys+y][txs+x]!==null) ok=false;
+              if(gridC[0][tys+y][txs+x]!==null || gridC[1][tys+y][txs+x]!==null) ok=false;
+            }
+          }
+          if(!ok) continue;
+          const id = buildIdCounter++;
+          for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){ gridB[tys+y][txs+x]=id; }
+          const w = tileToWorld(txs,tys);
+          const sp = { id, type:'spawner', tx:txs, ty:tys, tw:2, th:2, x:w.x, y:w.y, w:2*GRID, h:2*GRID, value: Math.ceil(Math.random()*9) };
+          computeSpawnerPorts(sp);
+          buildings.push(sp);
+        }
+
+        resize();
+        updateBuildMenu();
+      }
+
+      function startNextLevel(){
+        // Consume required numbers from inventory
+        for(const g of currentLevelGoals){
+          const have = baseInventory[g.num]||0;
+          const take = Math.min(have, g.amount);
+          baseInventory[g.num] = Math.max(0, have - take);
+        }
+        updateInv();
+
+        currentLevel++;
+        currentLevelGoals = genLevelGoals(currentLevel);
+        totalNeeded = currentLevelGoals.reduce((s,g)=>s+g.amount,0);
+        totalDelivered = 0;
+        levelEl.textContent = currentLevel+1;
+        renderGoals();
+        messageEl.textContent = '';
+
+        rerollCount++;
+        updateRerollUI();
+        updateBuildMenu();
+      }
+
+      // Build menu handling
+      buildMenu.addEventListener('click',(e)=>{
+        const btn = e.target.closest('.build-button'); if(!btn) return;
+        buildMenu.querySelectorAll('.build-button').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        if(btn.id==='tool-conveyor'){ tool={type:'conveyor'}; }
+        else if(btn.id==='tool-deconstruct'){ tool={type:'deconstruct'}; }
+        else if(btn.dataset.type==='operator'){ tool={type:'operator', op:btn.dataset.op}; }
+        else if(btn.dataset.type==='building'){ tool={type:'building', op:btn.dataset.op}; }
+
+        drawLayer = 0;
+      });
+      function updateBuildMenu(){
+        buildMenu.querySelectorAll('.build-button').forEach(btn=>{
+          const ml = parseInt(btn.dataset.minLevel || '1',10);
+          const unlocked = (currentLevel+1) >= ml;
+          btn.disabled = !unlocked;
+        });
+      }
+
+      // Input
+      let mouse={x:0,y:0}, worldMouse={x:0,y:0};
+      function updateMouse(e){
+        const r = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - r.left;
+        mouse.y = e.clientY - r.top;
+        worldMouse = screenToWorld(mouse.x, mouse.y);
+        previewTile = posToTile(snap(worldMouse.x), snap(worldMouse.y));
+      }
+      canvas.addEventListener('mousedown',(e)=>{
+        updateMouse(e);
+        if(e.button===1){
+          camera.isPanning=true; camera.lastPan.x=e.clientX; camera.lastPan.y=e.clientY;
+          canvas.style.cursor='grabbing'; e.preventDefault(); return;
+        }
+        const t = posToTile(snap(worldMouse.x), snap(worldMouse.y));
+        if(!inside(t.tx,t.ty)) return;
+
+        if(tool.type==='deconstruct'){
+          tryDeconstructAt(t);
+          return;
+        }
+
+        if(tool.type==='operator' || tool.type==='building'){
+          placeBuilding(tool.op, t);
+          return;
+        }
+
+        // Start drag-based conveyor
+        if(tool.type==='conveyor'){
+          if(!isOutputPortTile(t.tx,t.ty)) return;
+          if(gridC[drawLayer][t.ty][t.tx]!==null) return;
+          isDraggingConveyor = true;
+          dragPath = [{ tx:t.tx, ty:t.ty, layer:drawLayer }];
+        }
+      });
+
+      canvas.addEventListener('mousemove',(e)=>{
+        updateMouse(e);
+        if(camera.isPanning){
+          const dx=e.clientX - camera.lastPan.x, dy=e.clientY - camera.lastPan.y;
+          camera.x += dx; camera.y += dy; camera.lastPan.x=e.clientX; camera.lastPan.y=e.clientY;
+          return;
+        }
+        if(!isDraggingConveyor) return;
+        const t = posToTile(snap(worldMouse.x), snap(worldMouse.y));
+        if(!inside(t.tx,t.ty)) return;
+        const last = dragPath[dragPath.length-1];
+        const dx = Math.abs(t.tx - last.tx), dy = Math.abs(t.ty - last.ty);
+        if(dx+dy!==1) return;
+        const bid = gridB[t.ty][t.tx];
+        if(bid!==null){
+          const b = buildings.find(bb=>bb.id===bid);
+          if(!b || b.op!=='BRIDGE') return;
+        }
+        if(gridC[drawLayer][t.ty][t.tx]!==null) return;
+        dragPath.push({ tx:t.tx, ty:t.ty, layer:drawLayer });
+      });
+
+      canvas.addEventListener('mouseup',(e)=>{
+        if(e.button===1){ camera.isPanning=false; canvas.style.cursor='crosshair'; return; }
+        if(!isDraggingConveyor) return;
+        isDraggingConveyor = false;
+        if(dragPath.length>1){
+          const end = dragPath[dragPath.length-1];
+          if(isInputPortTile(end.tx,end.ty)){
+            const id = buildIdCounter++;
+            conveyors.push({ id, tiles:[...dragPath] });
+            for(const seg of dragPath){ gridC[seg.layer][seg.ty][seg.tx]=id; }
+          }
+        }
+        dragPath = [];
+      });
+
+      canvas.addEventListener('mouseleave',()=>{ camera.isPanning=false; if(isDraggingConveyor){ isDraggingConveyor=false; dragPath=[]; } });
+
+      canvas.addEventListener('wheel',(e)=>{
+        e.preventDefault();
+        const amt = e.deltaY * -0.001;
+        const newZoom = Math.max(0.2, Math.min(2.0, camera.zoom + amt*camera.zoom));
+        const scale = newZoom / camera.zoom;
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        camera.x = mx - (mx - camera.x) * scale;
+        camera.y = my - (my - camera.y) * scale;
+        camera.zoom = newZoom;
+      }, { passive:false });
+
+      document.addEventListener('keydown',(e)=>{
+        if(e.key==='r' || e.key==='R') rotation = (rotation+1)%4;
+        if((e.key==='b' || e.key==='B') && tool.type==='conveyor' && isDraggingConveyor) drawLayer = (drawLayer+1)%LAYERS;
+      });
+
+      // Deconstruct (protect spawners and base)
+      function tryDeconstructAt(t){
+        const bid = gridB[t.ty]?.[t.tx] ?? null;
+        if(bid!==null){
+          const b = buildings.find(bb=>bb.id===bid);
+          if(b && b.type!=='spawner' && b.type!=='base'){
+            clearMask(b.tx, b.ty, b.mask || [[0,0]]);
+            buildings = buildings.filter(bb=>bb.id!==b.id);
+            for(const pt of (b.ports?.inputs||[])){ portOccupied.delete(`${pt.tx},${pt.ty}`); }
+          }
+          return;
+        }
+        for(let l=0;l<LAYERS;l++){
+          const cid = gridC[l][t.ty]?.[t.tx] ?? null;
+          if(cid!==null){
+            const c = conveyors.find(cc=>cc.id===cid);
+            if(c){
+              for(const seg of c.tiles){ gridC[seg.layer][seg.ty][seg.tx]=null; }
+              conveyors = conveyors.filter(cc=>cc.id!==cid);
+              packets = packets.filter(p=>p.convId!==cid);
+            }
+            return;
+          }
+        }
+      }
+
+      // Port helpers
+      function isOutputPortTile(tx,ty){
+        for(const b of buildings){
+          if(!b.ports) continue;
+          if(b.type==='spawner' || (b.type==='building' && (b.ports.outputs?.length||0)>0)){
+            if(b.ports.outputs.some(p=>p.tx===tx && p.ty===ty)) return true;
+          }
+        }
+        return false;
+      }
+      function isInputPortTile(tx,ty){
+        for(const b of buildings){
+          if(!b.ports) continue;
+          if(b.type==='base' || (b.type==='building' && (b.ports.inputs?.length||0)>0)){
+            if(b.ports.inputs.some(p=>p.tx===tx && p.ty===ty)) return true;
+          }
+        }
+        return false;
+      }
+
+      // Building placement
+      function placeBuilding(op, t){
+        const isBridge = (op==='BRIDGE');
+        const baseMask = masks[op];
+        const rotMask = rotateMask(baseMask, rotation);
+        if(!canPlaceMask(t.tx, t.ty, rotMask, isBridge ? 'bridge' : 'operator')) return false;
+        const bounds = {
+          minX: Math.min(...rotMask.map(([dx])=>dx)),
+          maxX: Math.max(...rotMask.map(([dx])=>dx)),
+          minY: Math.min(...rotMask.map(([_,dy])=>dy)),
+          maxY: Math.max(...rotMask.map(([_,dy])=>dy)),
+        };
+        const x0 = t.tx + bounds.minX;
+        const y0 = t.ty + bounds.minY;
+        const w = (bounds.maxX - bounds.minX + 1) * GRID;
+        const h = (bounds.maxY - bounds.minY + 1) * GRID;
+        const world = tileToWorld(x0, y0);
+
+        const id = buildIdCounter++;
+        const ports = opPortFns[op](t.tx, t.ty, rotation, rotMask);
+        const logicType = (op==='SPLIT') ? 'splitter'
+                         : (op==='MERGE' ? 'merger'
+                         : (op==='BRIDGE' ? 'bridge'
+                         : (op==='HALF' ? 'halfer' : 'operator')));
+
+        const b = {
+          id, type:'building', logicType, op,
+          tx: t.tx, ty: t.ty, mask: rotMask,
+          x: world.x, y: world.y, w, h,
+          rotation,
+          ports,
+          inputs: { a:null, b:null },
+          cooldown:0, time: stats.opTime[op] || 1.0, progress:0,
+          pendingResult:null,
+          splitToggle:0
+        };
+        occupyMask(id, t.tx, t.ty, rotMask);
+        buildings.push(b);
+        return true;
+      }
+
+      // Movement & logic helpers
+      function portHasConveyor(pt){
+        for(let l=0;l<LAYERS;l++){
+          const cid = gridC[l][pt.ty]?.[pt.tx];
+          if(cid!==null) return true;
+        }
+        return false;
+      }
+      function outputsConnected(b){
+        return (b.ports.outputs||[]).some(pt => portHasConveyor(pt));
+      }
+      function canAdvance(p){
+        const conv = conveyors.find(c=>c.id===p.convId); if(!conv) return false;
+        const next = conv.tiles[p.tileIndex+1];
+        if(!next) return true;
+        const blocked = packets.some(q => q!==p && q.convId===p.convId && q.tileIndex===p.tileIndex+1);
+        if(blocked) return false;
+        const bid = gridB[next.ty][next.tx];
+        if(bid!==null){
+          const b = buildings.find(bb=>bb.id===bid);
+          if(!b || b.op!=='BRIDGE') return false;
+        }
+        return true;
+      }
+
+      // Strict port intake
+      function deliverIfReceiver(p){
+        const conv = conveyors.find(c=>c.id===p.convId); if(!conv) return false;
+        const cur = conv.tiles[p.tileIndex]; if(!cur) return false;
+        const portKey = `${cur.tx},${cur.ty}`;
+
+        // Base intake
+        for(const b of buildings.filter(bb=>bb.type==='base')){
+          if(b.ports.inputs.some(pt=>pt.tx===cur.tx && pt.ty===cur.ty)){
+            if(portOccupied.has(portKey)) return false;
+            portOccupied.add(portKey);
+            baseInventory[p.value] = (baseInventory[p.value]||0)+1;
+            updateInv();
+
+            // Progress against goals
+            for(const g of currentLevelGoals){
+              if(g.num===p.value && g.delivered < g.amount){
+                g.delivered++;
+                totalDelivered++;
+                break;
+              }
+            }
+            renderGoals();
+            if(totalDelivered>=totalNeeded){
+              messageEl.textContent='Goal complete! Leveling up...';
+              setTimeout(()=>{ startNextLevel(); messageEl.textContent=''; }, 800);
+            }
+
+            portOccupied.delete(portKey);
+            return true;
+          }
+        }
+
+        // Building intake: port capacity = 1, waits until operation completes
+        for(const b of buildings.filter(bb=>bb.type==='building')){
+          const inputs = b.ports?.inputs||[];
+          const idx = inputs.findIndex(pt=>pt.tx===cur.tx && pt.ty===cur.ty);
+          if(idx===-1) continue;
+          if(portOccupied.has(portKey)) return false;
+          if(!outputsConnected(b)) return false;
+
+          const isUnary = (b.logicType==='splitter' || b.logicType==='bridge' || b.logicType==='halfer' ||
+                           (b.logicType==='operator' && (['^','SQRT','FACT'].includes(b.op))));
+          if(isUnary){
+            if(b.inputs.a!==null || b.cooldown>0) return false;
+            portOccupied.add(portKey);
+            b.inputs.a = p.value;
+            b.inputsPortAKey = portKey;
+            return true;
+          } else {
+            // binary operators: map port index
+            if(idx===0){
+              if(b.inputs.a!==null || b.cooldown>0) return false;
+              portOccupied.add(portKey);
+              b.inputs.a = p.value;
+              b.inputsPortAKey = portKey;
+              return true;
+            } else {
+              if(b.inputs.b!==null || b.cooldown>0) return false;
+              portOccupied.add(portKey);
+              b.inputs.b = p.value;
+              b.inputsPortBKey = portKey;
+              return true;
+            }
+          }
+        }
+
+        return false;
+      }
+
+      // Emit helper with tile occupancy check
+      function emitOnPort(pt, value){
+        for(let l=0;l<LAYERS;l++){
+          const cid = gridC[l][pt.ty]?.[pt.tx];
+          if(cid!==null){
+            const conv = conveyors.find(c=>c.id===cid);
+            if(conv){
+              const idx = conv.tiles.findIndex(seg=>seg.tx===pt.tx && seg.ty===pt.ty && seg.layer===l);
+              if(idx>=0){
+                const occupied = packets.some(q=> q.convId===cid && q.tileIndex===idx);
+                if(occupied) return false;
+                packets.push({ value, convId:cid, tileIndex:idx, offset:0, layer:l, stalled:false });
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      function emitToOutputs(b, value){
+        const outs = b.ports.outputs || [];
+        if(b.logicType==='splitter' || b.logicType==='halfer'){
+          if(outs.length<1) return false;
+          if(b.logicType==='halfer' && outs.length>=2){
+            // halfer: two outputs sequentially, each value/2
+            const v = value/2;
+            const ok1 = emitOnPort(outs[0], v);
+            const ok2 = emitOnPort(outs[1], v);
+            return ok1 || ok2;
+          } else {
+            const idx = b.splitToggle % outs.length;
+            b.splitToggle++;
+            return emitOnPort(outs[idx], value);
+          }
+        }
+        for(let i=0;i<outs.length;i++){
+          if(emitOnPort(outs[i], value)) return true;
+        }
+        return false;
+      }
+
+      // Update loop
+      function update(dt){
+        if(gameState!=='playing') return;
+
+        // Spawners: independent outputs; skip if tile occupied
+        for(const s of buildings.filter(b=>b.type==='spawner')){
+          if(!s.outputTimers || !s.ports?.outputs) continue;
+          for(let i=0;i<s.outputTimers.length;i++){
+            s.outputTimers[i] -= dt;
+            if(s.outputTimers[i] <= 0){
+              const pt = s.ports.outputs[i];
+              emitOnPort(pt, s.value); // will fail if tile occupied, which is desired backpressure
+              s.outputTimers[i] = stats.spawnRate;
+            }
+          }
+        }
+
+        // Packets movement
+        for(let i=packets.length-1;i>=0;i--){
+          const p = packets[i];
+          const conv = conveyors.find(c=>c.id===p.convId);
+          if(!conv){ packets.splice(i,1); continue; }
+
+          if(p.stalled){
+            if(canAdvance(p)) p.stalled=false; else continue;
+          }
+
+          const next = conv.tiles[p.tileIndex+1];
+          if(!next){
+            const consumed = deliverIfReceiver(p);
+            if(consumed){
+              packets.splice(i,1);
+              continue;
+            }
+            p.stalled = true;
+            continue;
+          }
+
+          if(!canAdvance(p)){ p.stalled=true; continue; }
+
+          p.offset += stats.packetSpeed * dt;
+          if(p.offset >= GRID){
+            p.tileIndex++;
+            p.offset = 0;
+            const consumed = deliverIfReceiver(p);
+            if(consumed) packets.splice(i,1);
+          }
+        }
+
+        // Buildings processing
+        for(const b of buildings.filter(bb=>bb.type==='building')){
+          if(b.cooldown>0){
+            b.cooldown -= dt;
+            b.progress = Math.max(0, b.time - b.cooldown);
+            if(b.cooldown<=0){
+              if(b.pendingResult !== null && b.pendingResult !== undefined){
+                emitToOutputs(b, b.pendingResult);
+                b.pendingResult = null;
+              } else if(b.logicType==='bridge' && b.inputs.a!==null){
+                emitToOutputs(b, b.inputs.a);
+              }
+              // free occupied input ports now
+              if(b.inputsPortAKey){ portOccupied.delete(b.inputsPortAKey); b.inputsPortAKey=null; }
+              if(b.inputsPortBKey){ portOccupied.delete(b.inputsPortBKey); b.inputsPortBKey=null; }
+              // clear inputs
+              if(b.logicType==='operator'){
+                b.inputs.a=null; b.inputs.b=null;
+              } else if(b.logicType==='merger'){
+                b.inputs.a=null; b.inputs.b=null;
+              } else if(b.logicType==='splitter' || b.logicType==='bridge' || b.logicType==='halfer'){
+                b.inputs.a=null;
+              }
+            }
+            continue;
+          }
+
+          // must have outputs connected
+          if(!outputsConnected(b)) continue;
+
+          if(b.logicType==='splitter'){
+            if(b.inputs.a!==null){
+              b.pendingResult = b.inputs.a;
+              b.cooldown = stats.opTime['SPLIT'];
+              b.progress = 0;
+            }
+          } else if(b.logicType==='halfer'){
+            if(b.inputs.a!==null){
+              b.pendingResult = b.inputs.a;
+              b.cooldown = stats.opTime['HALF'];
+              b.progress = 0;
+            }
+          } else if(b.logicType==='bridge'){
+            if(b.inputs.a!==null){
+              emitToOutputs(b, b.inputs.a);
+              if(b.inputsPortAKey){ portOccupied.delete(b.inputsPortAKey); b.inputsPortAKey=null; }
+              b.inputs.a=null;
+            }
+          } else if(b.logicType==='merger' || b.logicType==='operator'){
+            // operator logic
+            const isUnary = ['^','SQRT','FACT'].includes(b.op);
+            if(isUnary){
+              if(b.inputs.a!==null){
+                let result=null;
+                switch(b.op){
+                  case '^': result = b.inputs.a * b.inputs.a; break;
+                  case 'SQRT': result = b.inputs.a>=0 ? Math.sqrt(b.inputs.a) : 0; break;
+                  case 'FACT': {
+                    const n = Math.min(12, Math.max(0, Math.floor(b.inputs.a)));
+                    let r=1; for(let k=2;k<=n;k++) r*=k;
+                    result = r; break;
+                  }
+                }
+                b.pendingResult = Math.round(result*100)/100;
+                b.cooldown = stats.opTime[b.op];
+                b.progress = 0;
+              }
+            } else {
+              // binary starts only when both present
+              if(b.inputs.a!==null && b.inputs.b!==null){
+                let result=null;
+                if(b.op==='POW'){
+                  const base = b.inputs.a, exp = b.inputs.b;
+                  result = Math.pow(base, exp);
+                } else if(b.op==='LOG'){
+                  const base = b.inputs.a; // bottom input mapped to a
+                  const val = b.inputs.b;  // top input mapped to b
+                  if(base>0 && base!==1 && val>0) result = Math.log(val)/Math.log(base);
+                  else result = 0;
+                } else if(b.logicType==='merger'){
+                  result = b.inputs.a; // simple pass-through policy
+                } else {
+                  switch(b.op){
+                    case '+': result = b.inputs.a + b.inputs.b; break;
+                    case '-': result = Math.abs(b.inputs.a - b.inputs.b); break;
+                    case '*': result = b.inputs.a * b.inputs.b; break;
+                    case '/': result = b.inputs.b!==0 ? b.inputs.a / b.inputs.b : 0; break;
+                    case 'MOD': result = b.inputs.b!==0 ? b.inputs.a % b.inputs.b : 0; break;
+                  }
+                }
+                b.pendingResult = Math.round(result*100)/100;
+                b.cooldown = stats.opTime[b.op] || 1.0;
+                b.progress = 0;
+              }
+            }
+          }
+        }
+      }
+
+      // Draw
+      function resize(){
+        canvas.width = parentDiv.clientWidth;
+        canvas.height = parentDiv.clientHeight;
+        const base = buildings.find(b=>b.type==='base');
+        if(base){
+          camera.x = canvas.width/2 - ((base.x + base.w/2) * camera.zoom);
+          camera.y = canvas.height/2 - ((base.y + base.h/2) * camera.zoom);
+        }
+        draw();
+      }
+      function drawGrid(){
+        ctx.strokeStyle = '#374151'; ctx.lineWidth = 1/camera.zoom;
+        const view = { x:-camera.x/camera.zoom, y:-camera.y/camera.zoom, w:canvas.width/camera.zoom, h:canvas.height/camera.zoom };
+        const sx = snap(view.x), sy = snap(view.y);
+        const ex = view.x + view.w + GRID, ey = view.y + view.h + GRID;
+        for(let x=sx; x<ex; x+=GRID){ ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(x, ey); ctx.stroke(); }
+        for(let y=sy; y<ey; y+=GRID){ ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(ex, y); ctx.stroke(); }
+      }
+      function drawPorts(b){
+        if(b.type!=='building') return;
+        for(const pt of b.ports?.inputs||[]){
+          const w = tileToWorld(pt.tx, pt.ty);
+          const key = `${pt.tx},${pt.ty}`;
+          ctx.fillStyle = portOccupied.has(key) ? '#DC2626' : '#EF4444';
+          ctx.fillRect(w.x+GRID/4, w.y+GRID/4, GRID/2, GRID/2);
+        }
+        for(const pt of b.ports?.outputs||[]){
+          const w = tileToWorld(pt.tx, pt.ty);
+          ctx.fillStyle = '#3B82F6';
+          ctx.fillRect(w.x+GRID/4, w.y+GRID/4, GRID/2, GRID/2);
+        }
+      }
+      function drawBuildingShape(b){
+        ctx.fillStyle=(b.logicType==='bridge') ? '#334155' : '#4B5563';
+        ctx.strokeStyle='#1F2937'; ctx.lineWidth=2;
+        for(const [dx,dy] of b.mask){
+          const tw = tileToWorld(b.tx+dx, b.ty+dy);
+          ctx.beginPath(); ctx.rect(tw.x, tw.y, GRID, GRID); ctx.fill(); ctx.stroke();
+        }
+        ctx.fillStyle='white'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.font='bold 16px Inter';
+        let label = b.op;
+        if(b.logicType==='splitter') label = 'SPLIT';
+        else if(b.logicType==='merger') label = 'MERGE';
+        else if(b.logicType==='bridge') label = 'BRIDGE';
+        else if(b.logicType==='halfer') label = 'HALF';
+        else if(b.op==='SQRT') label = '√';
+        else if(b.op==='LOG') label = 'log';
+        else if(b.op==='FACT') label = 'x!';
+        ctx.fillText(label, b.x + b.w/2, b.y + b.h/2);
+        const barW = b.w-8, barH=6, px=b.x+4, py=b.y+b.h+6;
+        ctx.fillStyle='#374151'; ctx.fillRect(px,py,barW,barH);
+        const pct = b.time>0 ? Math.min(1, b.progress / b.time) : 0;
+        ctx.fillStyle='#10B981'; ctx.fillRect(px,py,barW*pct,barH);
+      }
+      function draw(){
+        ctx.save();
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.translate(camera.x, camera.y);
+        ctx.scale(camera.zoom, camera.zoom);
+
+        drawGrid();
+
+        // Conveyors
+        for(let l=0;l<LAYERS;l++){
+          ctx.strokeStyle = l===0 ? '#9CA3AF' : '#60A5FA';
+          ctx.lineWidth = 4;
+          for(const c of conveyors){
+            ctx.beginPath();
+            let started=false;
+            for(const seg of c.tiles){
+              if(seg.layer!==l) continue;
+              const w = tileToWorld(seg.tx,seg.ty);
+              const cx=w.x+GRID/2, cy=w.y+GRID/2;
+              if(!started){ ctx.moveTo(cx,cy); started=true; }
+              else { ctx.lineTo(cx,cy); }
+            }
+            if(started) ctx.stroke();
+          }
+        }
+
+        // Buildings
+        for(const b of buildings){
+          if(b.type==='base'){
+            ctx.fillStyle='#475569'; ctx.strokeStyle='#1F2937'; ctx.lineWidth=3;
+            ctx.beginPath(); ctx.rect(b.x,b.y,b.w,b.h); ctx.fill(); ctx.stroke();
+            ctx.fillStyle='white'; ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.font='bold 24px Inter'; ctx.fillText('🏠', b.x + b.w/2, b.y + b.h/2);
+          } else if(b.type==='spawner'){
+            ctx.fillStyle='#F59E0B'; ctx.strokeStyle='#92400E'; ctx.lineWidth=3;
+            ctx.beginPath(); ctx.rect(b.x,b.y,b.w,b.h); ctx.fill(); ctx.stroke();
+            ctx.fillStyle='black'; ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.font='bold 22px Inter'; ctx.fillText(b.value, b.x + b.w/2, b.y + b.h/2);
+          } else if(b.type==='building'){
+            drawBuildingShape(b);
+            drawPorts(b);
+          }
+        }
+
+        // Packets
+        for(const p of packets){
+          const conv = conveyors.find(c=>c.id===p.convId);
+          if(!conv) continue;
+          const cur = conv.tiles[p.tileIndex];
+          const next = conv.tiles[p.tileIndex+1] || cur;
+          const cw = tileToWorld(cur.tx,cur.ty), nw = tileToWorld(next.tx,next.ty);
+          const cx=cw.x+GRID/2, cy=cw.y+GRID/2, nx=nw.x+GRID/2, ny=nw.y+GRID/2;
+          const t = Math.min(1, p.offset/GRID);
+          const x = cx + (nx-cx)*t, y = cy + (ny-cy)*t;
+
+          ctx.fillStyle='#FBBF24'; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='black'; ctx.font='bold 12px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(p.value, x, y);
+        }
+
+        // Drag conveyor preview
+        if(isDraggingConveyor && dragPath.length>1){
+          ctx.strokeStyle='#60A5FA'; ctx.lineWidth=4; ctx.setLineDash([5,5]);
+          ctx.beginPath();
+          for(let i=0;i<dragPath.length;i++){
+            const w = tileToWorld(dragPath[i].tx, dragPath[i].ty);
+            const cx=w.x+GRID/2, cy=w.y+GRID/2;
+            if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+          }
+          ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        // Preview footprint + ports
+        if(previewTile && (tool.type==='operator' || tool.type==='building')){
+          ctx.save();
+          ctx.globalAlpha=0.5;
+          const baseMask = masks[tool.op];
+          const rotMask = rotateMask(baseMask, rotation);
+          ctx.fillStyle = (tool.op==='BRIDGE') ? '#334155' : '#4B5563';
+          for(const [dx,dy] of rotMask){
+            const tw = tileToWorld(previewTile.tx+dx, previewTile.ty+dy);
+            ctx.fillRect(tw.x, tw.y, GRID, GRID);
+          }
+          const tempPorts = opPortFns[tool.op](previewTile.tx, previewTile.ty, rotation, rotMask);
+          ctx.fillStyle='#EF4444';
+          for(const pt of tempPorts.inputs){
+            const w = tileToWorld(pt.tx, pt.ty); ctx.fillRect(w.x+GRID/4, w.y+GRID/4, GRID/2, GRID/2);
+          }
+          ctx.fillStyle='#3B82F6';
+          for(const pt of tempPorts.outputs){
+            const w = tileToWorld(pt.tx, pt.ty); ctx.fillRect(w.x+GRID/4, w.y+GRID/4, GRID/2, GRID/2);
+          }
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      // Loop
+      let last=0;
+      function loop(ts){
+        const dt = (ts-last)/1000; last=ts;
+        if(!isNaN(dt) && dt < 0.5) update(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('resize', resize);
+
+      // Initial setup
+      initWorld();
+      updateInv();
+      updateBuildMenu();
+      requestAnimationFrame(loop);
+    });
+  </script>
+</body>
+</html>
