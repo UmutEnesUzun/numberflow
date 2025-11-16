@@ -147,7 +147,7 @@
         <button data-type="building" data-op="BRIDGE3" data-key="3" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="2">
           <div class="text-2xl font-bold">⟷⟷</div><div class="font-semibold">Bridge (1×3)</div>
         </button>
-        <button id="tool-deconstruct" data-key="Delete" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
+        <button id="tool-deconstruct" data-key="X" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
           <div class="text-3xl">🗑️</div><div class="font-semibold">Deconstruct</div>
         </button>
         <button id="tool-clean" data-key="K" class="build-button bg-gray-600 p-3 rounded-lg border-2 border-gray-500 text-center" data-min-level="1">
@@ -220,7 +220,7 @@
           <li><b>Rotate:</b> R</li>
           <li><b>Clean:</b> K</li>
           <li><b>Undo:</b> Z</li>
-          <li><b>Deconstruct:</b> Delete</li>
+          <li><b>Deconstruct:</b> X</li>
         </ul>
       </div>
     </div>
@@ -629,6 +629,7 @@
         }
         updateInv();
         startNextLevel();
+        updateBuildMenu();
       });
       function startNextLevel(){
         currentLevel++;
