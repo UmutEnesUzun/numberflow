@@ -896,8 +896,10 @@
           inputs: { a:null, b:null, logic:null },
           cooldown:0, time: stats.opTime[op] || 1.0, progress:0,
           pendingResult:null,
-          splitToggle:0
+          splitToggle:0,
+          _mergeToggle : false
         };
+        if (logicType === 'merger') b._mergeToggle = false;
         occupyMask(id, t.tx, t.ty, rotMask);
         buildings.push(b);
         undoStack.push({ type:'placeBuilding', payload:{ building:b } });
@@ -1181,7 +1183,11 @@
                 else if(b.op==='LOG'){
                   const base = b.inputs.a, val = b.inputs.b;
                   result = (base>0 && base!==1 && val>0) ? Math.log(val)/Math.log(base) : 0;
-                } else if(b.logicType==='merger'){ result = b.inputs.a; }
+                } else if(b.logicType==='merger'){     if (!b._mergeToggle) b._mergeToggle = false;
+
+                      result = b._mergeToggle ? b.inputs.b : b.inputs.a;
+
+                      b._mergeToggle = !b._mergeToggle; }
                 else {
                   switch(b.op){
                     case '+': result = b.inputs.a + b.inputs.b; break;
