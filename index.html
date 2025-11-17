@@ -579,7 +579,7 @@
         if(it.id==='packetSpeed'){ stats.packetSpeed += it.value; }
         else if(it.id==='spawnRate'){ stats.spawnRate = Math.max(0.25, stats.spawnRate*(1+it.value)); }
         else if(it.op){ stats.opTime[it.op] = Math.max(0.05, stats.opTime[it.op]*(1+it.value)); }
-        updateInv(); rerollShop();
+        updateInv(); rerollShop(); buyAmount++;
       });
 
       // Goals
@@ -1723,3 +1723,4 @@
   </script>
 </body>
 </html>
+
