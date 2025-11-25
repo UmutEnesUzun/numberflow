@@ -1580,8 +1580,8 @@
         buildings = []; conveyors = []; packets = [];
         baseInventory = {...state.baseInventory};
         currentLevel = state.level || 0; mode = state.mode || 'progression';
-        stats = state.stats;
-        buyAmount = stats.buyAmount;
+        Object.assign(stats, state.stats);
+        buyAmount = state.buyAmount;
         for(let y=0;y<TY;y++) for(let x=0;x<TX;x++) gridB[y][x]=null;
         for(let l=0;l<LAYERS;l++) for(let y=0;y<TY;y++) for(let x=0;x<TX;x++) gridC[l][y][x]=null;
         for(const b of state.buildings||[]){
@@ -1727,6 +1727,7 @@
   </script>
 </body>
 </html>
+
 
 
 
